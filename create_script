@@ -1,0 +1,205 @@
+-- odeberu pokud existuje funkce na oodebrání tabulek a sekvencí
+DROP FUNCTION IF EXISTS remove_all();
+
+-- vytvořím funkci která odebere tabulky a sekvence
+-- chcete také umět psát PLSQL? Zapište si předmět BI-SQL ;-)
+CREATE or replace FUNCTION remove_all() RETURNS void AS $$
+DECLARE
+    rec RECORD;
+    cmd text;
+BEGIN
+    cmd := '';
+
+    FOR rec IN SELECT
+            'DROP SEQUENCE ' || quote_ident(n.nspname) || '.'
+                || quote_ident(c.relname) || ' CASCADE;' AS name
+        FROM
+            pg_catalog.pg_class AS c
+        LEFT JOIN
+            pg_catalog.pg_namespace AS n
+        ON
+            n.oid = c.relnamespace
+        WHERE
+            relkind = 'S' AND
+            n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+            pg_catalog.pg_table_is_visible(c.oid)
+    LOOP
+        cmd := cmd || rec.name;
+    END LOOP;
+
+    FOR rec IN SELECT
+            'DROP TABLE ' || quote_ident(n.nspname) || '.'
+                || quote_ident(c.relname) || ' CASCADE;' AS name
+        FROM
+            pg_catalog.pg_class AS c
+        LEFT JOIN
+            pg_catalog.pg_namespace AS n
+        ON
+            n.oid = c.relnamespace WHERE relkind = 'r' AND
+            n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+            pg_catalog.pg_table_is_visible(c.oid)
+    LOOP
+        cmd := cmd || rec.name;
+    END LOOP;
+
+    EXECUTE cmd;
+    RETURN;
+END;
+$$ LANGUAGE plpgsql;
+-- zavolám funkci co odebere tabulky a sekvence - Mohl bych dropnout celé schéma a znovu jej vytvořit, použíjeme však PLSQL
+select remove_all();
+
+-- Remove conflicting tables
+DROP TABLE IF EXISTS adresa CASCADE;
+DROP TABLE IF EXISTS bar CASCADE;
+DROP TABLE IF EXISTS klub_pro_milovniky_kulecniku CASCADE;
+DROP TABLE IF EXISTS kulecnik CASCADE;
+DROP TABLE IF EXISTS napoje CASCADE;
+DROP TABLE IF EXISTS obcerstveni CASCADE;
+DROP TABLE IF EXISTS objednavka_v_baru CASCADE;
+DROP TABLE IF EXISTS vybaveni CASCADE;
+DROP TABLE IF EXISTS zakaznik CASCADE;
+DROP TABLE IF EXISTS zamestnanec CASCADE;
+DROP TABLE IF EXISTS objednavka_v_baru_napoje CASCADE;
+DROP TABLE IF EXISTS objednavka_v_baru_obcerstveni CASCADE;
+DROP TABLE IF EXISTS zamestnanec_zakaznik CASCADE;
+DROP TABLE IF EXISTS zamestnanec_kulecnik CASCADE;
+DROP TABLE IF EXISTS zamestnanec_bar CASCADE;
+-- End of removing
+
+CREATE TABLE adresa (
+    id_adresa SERIAL NOT NULL,
+    ulice VARCHAR(256) NOT NULL,
+    cislo_budovy INTEGER NOT NULL,
+    psc VARCHAR(256) NOT NULL,
+    mesto VARCHAR(256) NOT NULL,
+    stat VARCHAR(256) NOT NULL
+);
+ALTER TABLE adresa ADD CONSTRAINT pk_adresa PRIMARY KEY (id_adresa);
+
+CREATE TABLE bar (
+    id_klubu INTEGER NOT NULL,
+    kapacita INTEGER NOT NULL
+);
+ALTER TABLE bar ADD CONSTRAINT pk_bar PRIMARY KEY (id_klubu);
+
+CREATE TABLE klub_pro_milovniky_kulecniku (
+    id_klubu SERIAL NOT NULL,
+    id_adresa INTEGER NOT NULL,
+    internetova_stranka VARCHAR(256) NOT NULL,
+    telefonni_cislo VARCHAR(256) NOT NULL
+);
+ALTER TABLE klub_pro_milovniky_kulecniku ADD CONSTRAINT pk_klub_pro_milovniky_kulecniku PRIMARY KEY (id_klubu);
+ALTER TABLE klub_pro_milovniky_kulecniku ADD CONSTRAINT u_fk_klub_pro_milovniky_kulecni UNIQUE (id_adresa);
+
+CREATE TABLE kulecnik (
+    id_klubu INTEGER NOT NULL,
+    kapacita INTEGER NOT NULL
+);
+ALTER TABLE kulecnik ADD CONSTRAINT pk_kulecnik PRIMARY KEY (id_klubu);
+
+CREATE TABLE napoje (
+    kod_napoje SERIAL NOT NULL,
+    nazev VARCHAR(256) NOT NULL,
+    cena INTEGER NOT NULL,
+    objem INTEGER NOT NULL,
+    uroven_koncentrace_alkoholu INTEGER NOT NULL
+);
+ALTER TABLE napoje ADD CONSTRAINT pk_napoje PRIMARY KEY (kod_napoje);
+
+CREATE TABLE obcerstveni (
+    kod_obcerstveni SERIAL NOT NULL,
+    nazev VARCHAR(256) NOT NULL,
+    cena INTEGER NOT NULL,
+    hmotnost INTEGER NOT NULL
+);
+ALTER TABLE obcerstveni ADD CONSTRAINT pk_obcerstveni PRIMARY KEY (kod_obcerstveni);
+
+CREATE TABLE objednavka_v_baru (
+    id_objednavky SERIAL NOT NULL,
+    id_klubu INTEGER NOT NULL,
+    id_zakaznika INTEGER NOT NULL,
+    cena INTEGER NOT NULL,
+    spropitne INTEGER
+);
+ALTER TABLE objednavka_v_baru ADD CONSTRAINT pk_objednavka_v_baru PRIMARY KEY (id_objednavky);
+
+CREATE TABLE vybaveni (
+    id_vybaveni SERIAL NOT NULL,
+    id_klubu INTEGER NOT NULL,
+    id_zakaznika INTEGER,
+    typ_vybaveni VARCHAR(256) NOT NULL
+);
+ALTER TABLE vybaveni ADD CONSTRAINT pk_vybaveni PRIMARY KEY (id_vybaveni, id_klubu);
+
+CREATE TABLE zakaznik (
+    id_zakaznika SERIAL NOT NULL,
+    stav_slevy INTEGER,
+    telefonni_cislo VARCHAR(256)
+);
+ALTER TABLE zakaznik ADD CONSTRAINT pk_zakaznik PRIMARY KEY (id_zakaznika);
+
+CREATE TABLE zamestnanec (
+    id_zamestnance SERIAL NOT NULL,
+    osobni_cislo INTEGER NOT NULL,
+    jmeno VARCHAR(256) NOT NULL
+);
+ALTER TABLE zamestnanec ADD CONSTRAINT pk_zamestnanec PRIMARY KEY (id_zamestnance);
+ALTER TABLE zamestnanec ADD CONSTRAINT uc_zamestnanec_osobni_cislo UNIQUE (osobni_cislo);
+
+CREATE TABLE objednavka_v_baru_napoje (
+    id_objednavky INTEGER NOT NULL,
+    kod_napoje INTEGER NOT NULL
+);
+ALTER TABLE objednavka_v_baru_napoje ADD CONSTRAINT pk_objednavka_v_baru_napoje PRIMARY KEY (id_objednavky, kod_napoje);
+
+CREATE TABLE objednavka_v_baru_obcerstveni (
+    id_objednavky INTEGER NOT NULL,
+    kod_obcerstveni INTEGER NOT NULL
+);
+ALTER TABLE objednavka_v_baru_obcerstveni ADD CONSTRAINT pk_objednavka_v_baru_obcerstven PRIMARY KEY (id_objednavky, kod_obcerstveni);
+
+CREATE TABLE zamestnanec_zakaznik (
+    id_zamestnance INTEGER NOT NULL,
+    id_zakaznika INTEGER NOT NULL
+);
+ALTER TABLE zamestnanec_zakaznik ADD CONSTRAINT pk_zamestnanec_zakaznik PRIMARY KEY (id_zamestnance, id_zakaznika);
+
+CREATE TABLE zamestnanec_kulecnik (
+    id_zamestnance INTEGER NOT NULL,
+    id_klubu INTEGER NOT NULL
+);
+ALTER TABLE zamestnanec_kulecnik ADD CONSTRAINT pk_zamestnanec_kulecnik PRIMARY KEY (id_zamestnance, id_klubu);
+
+CREATE TABLE zamestnanec_bar (
+    id_zamestnance INTEGER NOT NULL,
+    id_klubu INTEGER NOT NULL
+);
+ALTER TABLE zamestnanec_bar ADD CONSTRAINT pk_zamestnanec_bar PRIMARY KEY (id_zamestnance, id_klubu);
+
+ALTER TABLE bar ADD CONSTRAINT fk_bar_klub_pro_milovniky_kulec FOREIGN KEY (id_klubu) REFERENCES klub_pro_milovniky_kulecniku (id_klubu) ON DELETE CASCADE;
+
+ALTER TABLE klub_pro_milovniky_kulecniku ADD CONSTRAINT fk_klub_pro_milovniky_kulecniku FOREIGN KEY (id_adresa) REFERENCES adresa (id_adresa) ON DELETE CASCADE;
+
+ALTER TABLE kulecnik ADD CONSTRAINT fk_kulecnik_klub_pro_milovniky_ FOREIGN KEY (id_klubu) REFERENCES klub_pro_milovniky_kulecniku (id_klubu) ON DELETE CASCADE;
+
+ALTER TABLE objednavka_v_baru ADD CONSTRAINT fk_objednavka_v_baru_bar FOREIGN KEY (id_klubu) REFERENCES bar (id_klubu) ON DELETE CASCADE;
+ALTER TABLE objednavka_v_baru ADD CONSTRAINT fk_objednavka_v_baru_zakaznik FOREIGN KEY (id_zakaznika) REFERENCES zakaznik (id_zakaznika) ON DELETE CASCADE;
+
+ALTER TABLE vybaveni ADD CONSTRAINT fk_vybaveni_kulecnik FOREIGN KEY (id_klubu) REFERENCES kulecnik (id_klubu) ON DELETE CASCADE;
+ALTER TABLE vybaveni ADD CONSTRAINT fk_vybaveni_zakaznik FOREIGN KEY (id_zakaznika) REFERENCES zakaznik (id_zakaznika) ON DELETE CASCADE;
+
+ALTER TABLE objednavka_v_baru_napoje ADD CONSTRAINT fk_objednavka_v_baru_napoje_obj FOREIGN KEY (id_objednavky) REFERENCES objednavka_v_baru (id_objednavky) ON DELETE CASCADE;
+ALTER TABLE objednavka_v_baru_napoje ADD CONSTRAINT fk_objednavka_v_baru_napoje_nap FOREIGN KEY (kod_napoje) REFERENCES napoje (kod_napoje) ON DELETE CASCADE;
+
+ALTER TABLE objednavka_v_baru_obcerstveni ADD CONSTRAINT fk_objednavka_v_baru_obcerstven FOREIGN KEY (id_objednavky) REFERENCES objednavka_v_baru (id_objednavky) ON DELETE CASCADE;
+ALTER TABLE objednavka_v_baru_obcerstveni ADD CONSTRAINT fk_objednavka_v_baru_obcerstv_1 FOREIGN KEY (kod_obcerstveni) REFERENCES obcerstveni (kod_obcerstveni) ON DELETE CASCADE;
+
+ALTER TABLE zamestnanec_zakaznik ADD CONSTRAINT fk_zamestnanec_zakaznik_zamestn FOREIGN KEY (id_zamestnance) REFERENCES zamestnanec (id_zamestnance) ON DELETE CASCADE;
+ALTER TABLE zamestnanec_zakaznik ADD CONSTRAINT fk_zamestnanec_zakaznik_zakazni FOREIGN KEY (id_zakaznika) REFERENCES zakaznik (id_zakaznika) ON DELETE CASCADE;
+
+ALTER TABLE zamestnanec_kulecnik ADD CONSTRAINT fk_zamestnanec_kulecnik_zamestn FOREIGN KEY (id_zamestnance) REFERENCES zamestnanec (id_zamestnance) ON DELETE CASCADE;
+ALTER TABLE zamestnanec_kulecnik ADD CONSTRAINT fk_zamestnanec_kulecnik_kulecni FOREIGN KEY (id_klubu) REFERENCES kulecnik (id_klubu) ON DELETE CASCADE;
+
+ALTER TABLE zamestnanec_bar ADD CONSTRAINT fk_zamestnanec_bar_zamestnanec FOREIGN KEY (id_zamestnance) REFERENCES zamestnanec (id_zamestnance) ON DELETE CASCADE;
+ALTER TABLE zamestnanec_bar ADD CONSTRAINT fk_zamestnanec_bar_bar FOREIGN KEY (id_klubu) REFERENCES bar (id_klubu) ON DELETE CASCADE;
