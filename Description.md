@@ -26,9 +26,11 @@ The `discount_status` attribute of the customer will be an integer value because
 
 
 -cz version----------------- 
+
 **Klub pro milovníky kulečníku** 
 
 **Popis**
+
 Před více než deseti lety vznikla společnost milovníků kulečníku. Díky tomu byla otevřena síť klubů pro milovníky kulečníku po celém světě.
 
 Každý klub má svoji adresu. Každá adresa má několik atributů: id_adresa, ulice, cislo_budovy, psc, mesto a stat.
