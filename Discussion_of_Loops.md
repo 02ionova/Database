@@ -1,4 +1,5 @@
 **Discussion of Loops**
+
 **Loop** **Klub_pro_milovniky_kulecniku - Billiards - Employee - Bar - Klub_pro_milovniky_kulecniku**  
 causes one problem: the same employee works simultaneously at the bar and in the billiards area.  
 We solved it by introducing **IO1**: The same employee of the club cannot work simultaneously at both the bar and the billiards area.
