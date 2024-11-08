@@ -17,11 +17,17 @@ Queries in `Relational Algebra (RA)` and `SQL`: Developed specific queries to va
 The following files in this repository represent each stage of the project:
 
 Conceptual_Schema.jpg: Image showing the high-level design of the database structure.
+
 Description.md: Detailed description of the project's purpose and goals.
+
 Discussion_of_Loops.md: Documentation discussing loops identified in the database schema and the solutions implemented.
+
 Relational_Schema.png: Diagram of the relational schema illustrating tables and relationships.
+
 SQL.pdf: Documentation and query examples used for validating the database through SQL.
+
 create_script: SQL file containing commands to create the database structure.
+
 insert_script: SQL file containing data insertion statements for initial data population.
 
 
